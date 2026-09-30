@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebIntel OSINT Analyzer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-group">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <circle cx="12" cy="11" r="3"/>
+            <path d="M12 8v0"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>WebIntel</h1>
+          <span class="brand-tag">OSINT ANALYZER</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnRefresh" class="icon-btn" title="Re-scan Website">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </button>
+        <button id="btnToggleSettings" class="icon-btn" title="API Settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Settings Drawer (Collapsible) -->
+    <section id="settingsDrawer" class="settings-drawer hidden">
+      <div class="settings-header">
+        <h3>API Configuration</h3>
+        <span class="settings-sub">Stored locally in your browser</span>
+      </div>
+      
+      <div class="form-group">
+        <label for="vtApiKey">VirusTotal API Key <span class="optional">(Optional)</span></label>
+        <input type="password" id="vtApiKey" placeholder="Enter VT API key..." autocomplete="off" />
+        <span class="field-hint">Free key from <a href="https://www.virustotal.com/gui/join-us" target="_blank">virustotal.com</a></span>
+      </div>
+
+      <div class="form-group">
+        <label for="ipinfoToken">IPinfo Token <span class="optional">(Optional)</span></label>
+        <input type="password" id="ipinfoToken" placeholder="Enter IPinfo access token..." autocomplete="off" />
+        <span class="field-hint">Free token from <a href="https://ipinfo.io/signup" target="_blank">ipinfo.io</a></span>
+      </div>
+
+      <div class="settings-actions">
+        <button id="btnSaveSettings" class="btn btn-primary">Save Keys</button>
+        <button id="btnClearSettings" class="btn btn-outline">Clear</button>
+      </div>
+      <div id="settingsFeedback" class="feedback-msg hidden"></div>
+    </section>
+
+    <!-- Main Content Stream -->
+    <main id="mainContent" class="main-content">
+      
+      <!-- Target Banner -->
+      <section class="target-banner">
+        <div class="target-label">ANALYZING TARGET</div>
+        <div class="target-value-row">
+          <span id="targetDomain" class="target-domain">Detecting tab...</span>
+          <span id="targetHttpsBadge" class="badge badge-neutral">--</span>
+        </div>
+      </section>
+
+      <!-- Restricted Page Alert -->
+      <section id="restrictedBanner" class="alert-card hidden">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-content">
+          <h4 id="restrictedTitle">Restricted Page</h4>
+          <p id="restrictedReason">OSINT analysis is not available on internal or local browser pages.</p>
+          <div class="alert-tips">Try navigating to a public website (e.g. <code>wikipedia.org</code>, <code>github.com</code>).</div>
+        </div>
+      </section>
+
+      <!-- Active Analysis Grid -->
+      <div id="intelSections" class="intel-grid">
+        
+        <!-- 1. Domain Information Card -->
+        <article class="intel-card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <span>Domain Information</span>
+            </div>
+            <span id="domainStatusBadge" class="status-indicator live">LIVE</span>
+          </div>
+          <div class="card-body">
+            <div class="data-row">
+              <span class="data-key">Domain</span>
+              <span id="valDomain" class="data-val mono">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Hostname</span>
+              <span id="valHostname" class="data-val mono">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Protocol</span>
+              <span id="valProtocol" class="data-val">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">TLD</span>
+              <span id="valTld" class="data-val mono">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">HTTPS Availability</span>
+              <span id="valHttps" class="data-val">--</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. Website History Card (Wayback Machine) -->
+        <article class="intel-card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>Website History</span>
+            </div>
+            <span class="api-source">Wayback Machine</span>
+          </div>
+          <div class="card-body">
+            <div class="data-row">
+              <span class="data-key">First Archive</span>
+              <span id="valFirstArchive" class="data-val mono">Loading...</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Latest Archive</span>
+              <span id="valLatestArchive" class="data-val mono">Loading...</span>
+            </div>
+            
+            <!-- Snapshot Buttons -->
+            <div class="button-row">
+              <button id="btnViewOldest" class="btn btn-archive" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                View Oldest
+              </button>
+              <button id="btnViewLatest" class="btn btn-archive" disabled>
+                View Latest
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            <div id="waybackMsg" class="card-note hidden"></div>
+          </div>
+        </article>
+
+        <!-- 3. Security Card (VirusTotal) -->
+        <article class="intel-card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span>Security Reputation</span>
+            </div>
+            <span id="vtBadge" class="badge badge-neutral">Checking...</span>
+          </div>
+          <div class="card-body">
+            <div class="stats-matrix">
+              <div class="stat-box stat-malicious">
+                <span class="stat-num" id="statMalicious">-</span>
+                <span class="stat-label">Malicious</span>
+              </div>
+              <div class="stat-box stat-suspicious">
+                <span class="stat-num" id="statSuspicious">-</span>
+                <span class="stat-label">Suspicious</span>
+              </div>
+              <div class="stat-box stat-harmless">
+                <span class="stat-num" id="statHarmless">-</span>
+                <span class="stat-label">Harmless</span>
+              </div>
+              <div class="stat-box stat-undetected">
+                <span class="stat-num" id="statUndetected">-</span>
+                <span class="stat-label">Undetected</span>
+              </div>
+            </div>
+
+            <div class="data-row mt-2">
+              <span class="data-key">Community Reputation</span>
+              <span id="valVtReputation" class="data-val mono">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Last Scan Date</span>
+              <span id="valVtDate" class="data-val mono">--</span>
+            </div>
+            <div id="vtMsg" class="card-note hidden"></div>
+          </div>
+        </article>
+
+        <!-- 4. IP & Network Intelligence Card (IPinfo) -->
+        <article class="intel-card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                <line x1="6" y1="6" x2="6.01" y2="6"/>
+                <line x1="6" y1="18" x2="6.01" y2="18"/>
+              </svg>
+              <span>IP & Network Telemetry</span>
+            </div>
+            <span class="api-source">IPinfo</span>
+          </div>
+          <div class="card-body">
+            <div class="data-row">
+              <span class="data-key">IP Address</span>
+              <span id="valIp" class="data-val mono">Loading...</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Country</span>
+              <span id="valCountry" class="data-val">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Organization / ISP</span>
+              <span id="valOrg" class="data-val" title="">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">ASN</span>
+              <span id="valAsn" class="data-val mono">--</span>
+            </div>
+            <div id="ipinfoMsg" class="card-note hidden"></div>
+          </div>
+        </article>
+
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>WebIntel OSINT v1.0.0</span>
+      <span class="footer-dot">•</span>
+      <span>Manifest V3</span>
+    </footer>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

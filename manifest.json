@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "WebIntel OSINT Analyzer",
+  "version": "1.0.0",
+  "description": "Collects publicly available OSINT intelligence on active websites: Wayback Machine archives, VirusTotal reputation, and IP telemetry.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://archive.org/*",
+    "https://web.archive.org/*",
+    "https://www.virustotal.com/*",
+    "https://ipinfo.io/*",
+    "https://cloudflare-dns.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  }
+}
